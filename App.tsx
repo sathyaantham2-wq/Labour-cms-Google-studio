@@ -104,13 +104,18 @@ const App: React.FC = () => {
   }, [cases, selectedCaseId]);
 
   const renderView = () => {
-    if (!isLoggedIn && activeView !== 'portal') {
+    // Priority 1: Public Portal
+    if (activeView === 'portal') {
+      return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
+    }
+
+    // Priority 2: Security Gateway
+    if (activeView === 'login' || !isLoggedIn) {
       return <Login onLogin={handleLogin} onBack={() => setActiveView('portal')} />;
     }
 
+    // Priority 3: Restricted Dashboards
     switch (activeView) {
-      case 'portal':
-        return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
       case 'dashboard':
         return (
           <Dashboard 

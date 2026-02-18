@@ -12,7 +12,9 @@ import {
   Layers,
   Search,
   Filter,
-  IndianRupee
+  IndianRupee,
+  Clock,
+  CalendarDays
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -24,9 +26,29 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateNotice }) => {
   const [statusFilter, setStatusFilter] = useState<CaseStatus | 'ALL'>('ALL');
 
+  // Temporal Logic for Today and Tomorrow
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
+
+  const todayMeetingsCount = useMemo(() => {
+    return cases.reduce((acc, c) => 
+      acc + c.hearings.filter(h => h.date.startsWith(todayStr)).length, 0
+    );
+  }, [cases, todayStr]);
+
+  const tomorrowMeetingsCount = useMemo(() => {
+    return cases.reduce((acc, c) => 
+      acc + c.hearings.filter(h => h.date.startsWith(tomorrowStr)).length, 0
+    );
+  }, [cases, tomorrowStr]);
+
   const stats = [
     { label: 'Atomic Records', value: cases.length, icon: Layers, color: 'blue' },
     { label: 'Capital Recovered', value: `₹${cases.reduce((sum, c) => sum + (c.amountRecovered || 0), 0).toLocaleString()}`, icon: TrendingUp, color: 'gold' },
+    { label: "Today's Agenda", value: todayMeetingsCount, icon: Clock, color: 'pulse', sub: 'Active Events' },
+    { label: 'Tomorrow Schedule', value: tomorrowMeetingsCount, icon: CalendarDays, color: 'navy', sub: 'Next Cycle' },
     { label: 'Open Conflicts', value: cases.filter(c => c.status === CaseStatus.OPEN).length, icon: AlertCircle, color: 'orange' },
     { label: 'Resolved Events', value: cases.filter(c => c.status === CaseStatus.CLOSED).length, icon: CheckCircle, color: 'emerald' },
   ];
@@ -63,17 +85,27 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
       </div>
 
       {/* Stats Deconstruction */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {stats.map((stat) => (
           <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-[#C9A84C]/50 transition-all group relative overflow-hidden">
             <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 opacity-5 group-hover:opacity-10 transition-opacity`}>
               <stat.icon size={96} className="text-slate-900" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{stat.label}</p>
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              {stat.color === 'pulse' && stat.value > 0 && (
+                <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+              )}
+            </div>
             <div className="flex items-end justify-between">
-              <p className={`serif text-4xl font-black ${stat.color === 'gold' ? 'text-[#C9A84C]' : 'text-[#0A1628]'}`}>
-                {stat.value}
-              </p>
+              <div>
+                <p className={`serif text-4xl font-black ${stat.color === 'gold' ? 'text-[#C9A84C]' : 'text-[#0A1628]'}`}>
+                  {stat.value}
+                </p>
+                {stat.sub && (
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mt-1">{stat.sub}</p>
+                )}
+              </div>
               <div className={`p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:text-[#C9A84C] transition-colors`}>
                 <stat.icon size={20} />
               </div>

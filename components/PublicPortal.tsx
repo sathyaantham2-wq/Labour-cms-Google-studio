@@ -24,8 +24,8 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col">
-      {/* Header Bar */}
-      <header className="p-8 flex justify-between items-center">
+      {/* Header Bar - Forced to top with z-index */}
+      <header className="relative z-50 p-8 flex justify-between items-center border-b border-slate-100 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-[#0A1628] border border-[#C9A84C]/50 rounded-xl flex items-center justify-center text-[#C9A84C]">
             <Shield size={20} />
@@ -36,15 +36,20 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
           </div>
         </div>
         <button 
-          onClick={onAdminAccess}
-          className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-[#0A1628] transition-colors flex items-center gap-2"
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAdminAccess();
+          }}
+          className="cursor-pointer px-5 py-2.5 bg-[#0A1628] text-[#C9A84C] border border-[#C9A84C]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-[#0A1628] hover:border-[#0A1628] transition-all flex items-center gap-2 group shadow-lg shadow-[#0A1628]/10"
         >
-          Officer Access <ChevronRight size={14} />
+          Officer Access <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </header>
 
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 -mt-20">
+      {/* Hero Section - Removed negative margin that caused overlap */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
         <div className="max-w-2xl w-full space-y-12">
           <div className="text-center space-y-4">
             <h1 className="serif text-5xl font-black text-[#0A1628] tracking-tighter leading-none">
@@ -79,7 +84,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
 
           {/* Search Result Projection */}
           {hasSearched && (
-            <div className="animate-in fade-in slide-in-from-top-8 duration-500">
+            <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
               {result ? (
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
                   <div className="bg-[#0A1628] p-8 text-white flex justify-between items-start">
@@ -155,7 +160,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
         </div>
       </div>
 
-      <footer className="p-8 text-center">
+      <footer className="p-8 text-center border-t border-slate-100">
         <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Official Public Access Gateway • No Login Required</p>
       </footer>
     </div>
