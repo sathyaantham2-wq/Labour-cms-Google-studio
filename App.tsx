@@ -13,14 +13,14 @@ import {
   Shield,
   Briefcase
 } from 'lucide-react';
-import { LaborCase, ViewType, CaseStatus } from './types';
-import Dashboard from './components/Dashboard';
-import CaseForm from './components/CaseForm';
-import CaseDetails from './components/CaseDetails';
-import NoticePreview from './components/NoticePreview';
-import Settings from './components/Settings';
-import PublicPortal from './components/PublicPortal';
-import Login from './components/Login';
+import { LaborCase, ViewType, CaseStatus } from './types.ts';
+import Dashboard from './components/Dashboard.tsx';
+import CaseForm from './components/CaseForm.tsx';
+import CaseDetails from './components/CaseDetails.tsx';
+import NoticePreview from './components/NoticePreview.tsx';
+import Settings from './components/Settings.tsx';
+import PublicPortal from './components/PublicPortal.tsx';
+import Login from './components/Login.tsx';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>('portal');
@@ -33,7 +33,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedCases = localStorage.getItem('labor_cases');
     if (savedCases) {
-      setCases(JSON.parse(savedCases));
+      try {
+        const parsed = JSON.parse(savedCases);
+        setCases(Array.isArray(parsed) ? parsed : []);
+      } catch (e) {
+        console.error("Failed to parse local cases", e);
+        setCases([]);
+      }
     } else {
       const mockCases: LaborCase[] = [
         {
@@ -144,7 +150,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Logic to show/hide sidebar based on view
   const showSidebar = isLoggedIn && activeView !== 'portal' && activeView !== 'login';
 
   return (
