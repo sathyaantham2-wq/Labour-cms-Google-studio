@@ -20,13 +20,13 @@ export interface LaborCase {
   
   applicantName: string;
   applicantPhones: string[];
-  applicantEmail: string; // New field
+  applicantEmail: string;
   applicantAddress: string;
   
   managementName: string;
   managementPerson: string;
   managementPhone: string;
-  managementEmail: string; // New field
+  managementEmail: string;
   managementAddress: string;
   
   subject: string;
@@ -37,4 +37,4 @@ export interface LaborCase {
   createdAt: string;
 }
 
-export type ViewType = 'dashboard' | 'create' | 'details' | 'notice' | 'settings';
+export type ViewType = 'portal' | 'login' | 'dashboard' | 'create' | 'details' | 'notice' | 'settings';

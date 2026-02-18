@@ -9,14 +9,15 @@ import {
   User, 
   Building, 
   Plus, 
-  CheckCircle2, 
   Edit3, 
   FileText,
-  DollarSign,
   History,
   ShieldCheck,
-  Send,
-  AlertCircle
+  AlertCircle,
+  MoreVertical,
+  ChevronRight,
+  X,
+  Save
 } from 'lucide-react';
 
 interface CaseDetailsProps {
@@ -58,160 +59,172 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
   const saveAmount = () => {
     onUpdate({
       ...caseItem,
-      amountRecovered: parseFloat(recoveryAmount)
+      amountRecovered: parseFloat(recoveryAmount) || 0
     });
     setIsEditingAmount(false);
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Atomic Header */}
-      <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-5">
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* Precision Header */}
+      <div className="flex items-center justify-between bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
+        <div className="flex items-center gap-6">
           <button 
             onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+            className="p-3 bg-slate-50 hover:bg-[#0A1628] hover:text-[#C9A84C] rounded-2xl text-slate-400 transition-all shadow-sm"
           >
             <ArrowLeft size={24} />
           </button>
-          <div className="h-10 w-px bg-slate-200" />
+          <div className="h-12 w-px bg-slate-100" />
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{caseItem.fileNumber}</h1>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                caseItem.status === CaseStatus.OPEN ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
+            <div className="flex items-center gap-4">
+              <h1 className="serif text-4xl font-black text-[#0A1628] tracking-tighter">{caseItem.fileNumber}</h1>
+              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] ${
+                caseItem.status === CaseStatus.OPEN ? 'bg-orange-100 text-orange-700' : 'bg-[#C9A84C]/20 text-[#C9A84C]'
               }`}>
-                {caseItem.status}
+                {caseItem.status} Status
               </span>
             </div>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-tight mt-1">{caseItem.section} • Identity Record Created {new Date(caseItem.createdAt).toLocaleDateString()}</p>
+            <p className="text-slate-400 text-xs font-black uppercase tracking-widest mt-1">Identity Atom • Established {new Date(caseItem.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <button 
             onClick={onNotice}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            className="flex items-center gap-3 px-8 py-3.5 bg-[#0A1628] text-[#C9A84C] rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[#C9A84C] hover:text-[#0A1628] shadow-2xl shadow-[#C9A84C]/20 transition-all active:scale-95"
           >
             <FileText size={18} />
             Generate Notice
           </button>
           <button 
             onClick={toggleStatus}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all ${
-              caseItem.status === CaseStatus.OPEN 
-                ? 'bg-slate-900 text-white hover:bg-black' 
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-            }`}
+            className="p-3.5 bg-slate-50 text-slate-400 hover:text-[#0A1628] rounded-2xl border border-slate-100 transition-all"
+            title="Toggle Status"
           >
-            <ShieldCheck size={18} />
-            {caseItem.status === CaseStatus.OPEN ? 'Finalize Case' : 'Re-open Conflict'}
+            <ShieldCheck size={20} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Conflict Summary */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              {/* Fix: AlertCircle was missing from the lucide-react import list */}
-              <AlertCircle size={14} className="text-orange-500" />
-              The Conflict
-            </h3>
-            <p className="text-lg font-bold text-slate-800 leading-snug mb-6 italic">"{caseItem.subject}"</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Core Conflict & Actors (Source of Truth) */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* The Conflict Atom */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+                <AlertCircle size={16} className="text-[#C9A84C]" />
+                Subject Conflict Trace
+              </h3>
+              <span className="text-xs font-black text-[#0A1628] underline underline-offset-4 decoration-[#C9A84C] decoration-2 uppercase">{caseItem.section}</span>
+            </div>
+            <p className="serif text-2xl font-black text-[#0A1628] leading-tight mb-8">"{caseItem.subject}"</p>
             
-            <div className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Financial Quantum</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-blue-900 tracking-tighter">₹{caseItem.amountRecovered.toLocaleString()}</span>
-                  <button onClick={() => setIsEditingAmount(true)} className="text-blue-400 hover:text-blue-600">
-                    <Edit3 size={16} />
-                  </button>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-[#0A1628] rounded-2xl p-6 border border-[#C9A84C]/20">
+                <p className="text-[10px] font-black text-[#C9A84C] uppercase tracking-widest mb-1">Financial Quantum Recovered</p>
+                {isEditingAmount ? (
+                  <div className="flex gap-2">
+                    <input 
+                      type="number"
+                      value={recoveryAmount}
+                      onChange={(e) => setRecoveryAmount(e.target.value)}
+                      className="bg-white/10 text-white serif text-3xl font-black w-full border-b-2 border-[#C9A84C] outline-none"
+                    />
+                    <button onClick={saveAmount} className="p-2 bg-[#C9A84C] text-[#0A1628] rounded-lg">
+                      <Save size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline gap-2">
+                    <p className="serif text-4xl font-black text-white tracking-tighter">₹{caseItem.amountRecovered.toLocaleString()}</p>
+                    <button onClick={() => setIsEditingAmount(true)} className="text-white/30 hover:text-[#C9A84C] transition-colors">
+                      <Edit3 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Recovery Source</p>
-                <p className="text-sm font-bold text-slate-700">{caseItem.managementName}</p>
+              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conflict Source</p>
+                  <p className="text-sm font-black text-[#0A1628]">{caseItem.managementName}</p>
+                </div>
+                <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <ChevronRight size={20} className="text-slate-300" />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* The Actors */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-1 h-full bg-blue-600" />
-               <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                    <User size={18} />
-                  </div>
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">The Petitioner</h3>
+          {/* Actor Polarization */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-8 opacity-5 -mr-4 -mt-4 group-hover:scale-110 transition-transform">
+                  <User size={120} />
                </div>
-               <div className="space-y-4">
+               <h3 className="text-[10px] font-black text-[#C9A84C] uppercase tracking-[0.2em] mb-6">Petitioner Entity</h3>
+               <div className="space-y-6">
                   <div>
-                    <p className="text-lg font-black text-slate-900">{caseItem.applicantName}</p>
-                    <p className="text-sm font-bold text-blue-600">{caseItem.applicantPhones[0]}</p>
-                    <p className="text-xs text-slate-500 italic mt-1">{caseItem.applicantEmail || 'No email provided'}</p>
+                    <p className="serif text-2xl font-black text-[#0A1628]">{caseItem.applicantName}</p>
+                    <p className="text-xs font-black text-blue-600 mt-1 uppercase">{caseItem.applicantPhones[0]}</p>
                   </div>
-                  <div className="flex gap-2 p-3 bg-slate-50 rounded-xl">
-                    <MapPin size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium">{caseItem.applicantAddress}</p>
+                  <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <MapPin size={18} className="text-[#C9A84C] shrink-0" />
+                    <p className="text-xs font-bold text-slate-600 leading-relaxed">{caseItem.applicantAddress}</p>
                   </div>
                </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-1 h-full bg-slate-900" />
-               <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-slate-100 text-slate-900 rounded-lg">
-                    <Building size={18} />
-                  </div>
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">The Respondent</h3>
+            <div className="bg-[#0A1628] rounded-3xl border border-[#C9A84C]/20 p-8 shadow-sm relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-8 opacity-5 -mr-4 -mt-4 group-hover:scale-110 transition-transform">
+                  <Building size={120} className="text-white" />
                </div>
-               <div className="space-y-4">
+               <h3 className="text-[10px] font-black text-[#C9A84C] uppercase tracking-[0.2em] mb-6">Respondent Entity</h3>
+               <div className="space-y-6">
                   <div>
-                    <p className="text-lg font-black text-slate-900">{caseItem.managementName}</p>
-                    <p className="text-xs font-bold text-slate-400 italic">Attn: {caseItem.managementPerson}</p>
-                    <p className="text-sm font-bold text-indigo-600 mt-1">{caseItem.managementPhone}</p>
+                    <p className="serif text-2xl font-black text-white">{caseItem.managementName}</p>
+                    <p className="text-xs font-black text-[#C9A84C] mt-1 uppercase">Attn: {caseItem.managementPerson}</p>
                   </div>
-                  <div className="flex gap-2 p-3 bg-slate-50 rounded-xl">
-                    <MapPin size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium">{caseItem.managementAddress}</p>
+                  <div className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <MapPin size={18} className="text-[#C9A84C] shrink-0" />
+                    <p className="text-xs font-bold text-slate-400 leading-relaxed">{caseItem.managementAddress}</p>
                   </div>
                </div>
             </div>
           </div>
         </div>
 
-        {/* The Events (Timeline) */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm uppercase tracking-tight">
-                <History size={18} className="text-slate-400" />
-                Case Events
+        {/* The Chronicles (Event Atom) */}
+        <div className="lg:col-span-4 space-y-8">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full min-h-[500px]">
+            <div className="p-6 bg-[#0A1628] flex justify-between items-center border-b border-[#C9A84C]/20">
+              <h3 className="serif text-lg font-black text-white flex items-center gap-3">
+                <History size={20} className="text-[#C9A84C]" />
+                Event Logs
               </h3>
               <button 
                 onClick={() => setIsAddingHearing(true)}
-                className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all"
+                className="p-2 bg-[#C9A84C] text-[#0A1628] rounded-xl hover:bg-white transition-all shadow-lg"
               >
-                <Plus size={18} />
+                <Plus size={20} />
               </button>
             </div>
             
-            <div className="p-6 flex-1 space-y-6 overflow-y-auto">
+            <div className="p-6 flex-1 space-y-6 overflow-y-auto max-h-[600px] custom-scrollbar">
               {isAddingHearing && (
-                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-4 animate-in fade-in slide-in-from-top-4">
+                <div className="p-5 bg-slate-50 rounded-2xl border-2 border-dashed border-[#C9A84C]/30 space-y-4 animate-in slide-in-from-top-4 duration-300">
                   <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Event Timestamp</label>
                     <input 
                       type="datetime-local" 
-                      className="w-full text-xs font-bold p-3 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                      className="w-full text-xs font-black p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#C9A84C] outline-none"
                       value={newHearing.date}
                       onChange={(e) => setNewHearing({...newHearing, date: e.target.value})}
                     />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Remarks</label>
                     <textarea 
-                      placeholder="Specify meeting context (e.g., First joint meeting for wage verification)"
-                      className="w-full text-xs font-medium p-3 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                      placeholder="Specify the focus of this session..."
+                      className="w-full text-xs font-bold p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#C9A84C] outline-none resize-none"
                       rows={3}
                       value={newHearing.remarks}
                       onChange={(e) => setNewHearing({...newHearing, remarks: e.target.value})}
@@ -220,59 +233,57 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
                   <div className="flex gap-2">
                     <button 
                       onClick={handleAddHearing}
-                      className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-xs font-black shadow-lg shadow-indigo-100"
+                      className="flex-1 bg-[#0A1628] text-[#C9A84C] py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl"
                     >
-                      Commit Event
+                      COMMIT
                     </button>
                     <button 
                       onClick={() => setIsAddingHearing(false)}
-                      className="px-4 py-2 bg-white text-slate-400 rounded-xl text-xs font-bold"
+                      className="px-4 py-2.5 bg-white text-slate-400 border border-slate-200 rounded-xl text-xs font-bold"
                     >
-                      Abort
+                      <X size={16} />
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-8 relative">
-                {caseItem.hearings.length > 0 ? (
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-100" />
-                ) : null}
-                
-                {caseItem.hearings.map((h, i) => (
-                  <div key={h.id} className="relative pl-10">
-                    <div className={`absolute left-2.5 top-0 w-3.5 h-3.5 rounded-full border-4 border-white shadow-md z-10 ${
-                      h.isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'
-                    }`}>
-                    </div>
-                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:border-slate-300 transition-all cursor-default group">
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="text-xs font-black text-slate-900">
-                          {new Date(h.date).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short', year: 'numeric'
-                          })}
-                        </p>
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${
-                          h.isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'
-                        }`}>
-                          {h.isCompleted ? 'VERIFIED' : 'SCHEDULED'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-medium text-slate-500 leading-relaxed italic">"{h.remarks || 'Standard joint meeting session.'}"</p>
-                      <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button className="text-[9px] font-bold text-indigo-600 hover:underline">Re-Schedule</button>
-                         <button className="text-[9px] font-bold text-emerald-600 hover:underline">Mark Result</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {caseItem.hearings.length === 0 && !isAddingHearing && (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-2xl">
-                    <Clock size={32} className="mx-auto mb-3 text-slate-200" />
-                    <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Awaiting First Event</p>
-                  </div>
+              <div className="relative">
+                {caseItem.hearings.length > 0 && (
+                  <div className="absolute left-[19px] top-0 bottom-0 w-px bg-slate-100" />
                 )}
+                
+                <div className="space-y-8">
+                  {caseItem.hearings.slice().reverse().map((h, i) => (
+                    <div key={h.id} className="relative pl-12 group">
+                      <div className={`absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-white shadow-md z-10 flex items-center justify-center text-white ${
+                        h.isCompleted ? 'bg-[#C9A84C]' : 'bg-[#0A1628]'
+                      }`}>
+                        {h.isCompleted ? <ShieldCheck size={18} /> : <Clock size={18} />}
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-100 hover:border-[#C9A84C]/50 transition-all cursor-default shadow-sm group-hover:shadow-md">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="text-xs font-black text-[#0A1628]">
+                            {new Date(h.date).toLocaleDateString('en-IN', {
+                              day: '2-digit', month: 'short', year: 'numeric'
+                            })}
+                          </p>
+                          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                            {new Date(h.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-500 leading-relaxed italic">"{h.remarks || 'Standard case progression event.'}"</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {caseItem.hearings.length === 0 && !isAddingHearing && (
+                    <div className="text-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+                      <History size={48} className="mx-auto mb-4 text-slate-200" />
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Chronicle Empty</p>
+                      <p className="text-xs font-bold text-slate-400 mt-2">Initialize the first event to begin trace.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -10,8 +10,8 @@ import {
   Bell,
   LogOut,
   Menu,
-  X,
-  ChevronRight
+  Shield,
+  Briefcase
 } from 'lucide-react';
 import { LaborCase, ViewType, CaseStatus } from './types';
 import Dashboard from './components/Dashboard';
@@ -19,15 +19,17 @@ import CaseForm from './components/CaseForm';
 import CaseDetails from './components/CaseDetails';
 import NoticePreview from './components/NoticePreview';
 import Settings from './components/Settings';
+import PublicPortal from './components/PublicPortal';
+import Login from './components/Login';
 
 const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<ViewType>('dashboard');
+  const [activeView, setActiveView] = useState<ViewType>('portal');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [cases, setCases] = useState<LaborCase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initial mock data
   useEffect(() => {
     const savedCases = localStorage.getItem('labor_cases');
     if (savedCases) {
@@ -36,23 +38,23 @@ const App: React.FC = () => {
       const mockCases: LaborCase[] = [
         {
           id: '1',
-          fileNumber: 'A/1024/2024',
-          receivedDate: '2024-02-15',
-          section: 'Wages',
-          applicantName: 'M. Ramesh',
+          fileNumber: 'TG/LC/2025/001',
+          receivedDate: '2025-01-15',
+          section: 'Minimum Wages',
+          applicantName: 'Rajesh Kumar Yadav',
           applicantPhones: ['9876543210'],
-          applicantEmail: 'ramesh.m@example.com',
+          applicantEmail: 'rajesh.yadav@example.com',
           applicantAddress: 'Plot 45, Jubilee Hills, Hyderabad',
-          managementName: 'Innova Tech Solutions',
-          managementPerson: 'Sanjay Kumar',
+          managementName: 'Sunrise Textiles Pvt Ltd',
+          managementPerson: 'Sri K. Venkatesh',
           managementPhone: '8887776660',
-          managementEmail: 'hr@innovatech.com',
+          managementEmail: 'hr@sunrisetextiles.com',
           managementAddress: 'HITEC City, Phase 2, Hyderabad',
-          subject: 'Non-payment of overtime wages for 6 months',
-          amountRecovered: 45000,
+          subject: 'Unpaid Wages – 6 Months Arrears',
+          amountRecovered: 148000,
           status: CaseStatus.OPEN,
           hearings: [
-            { id: 'h1', date: '2024-03-01', remarks: 'Preliminary hearing scheduled', isCompleted: true }
+            { id: 'h1', date: '2025-02-10T10:30', remarks: 'Case registered. Notice issued to Management.', isCompleted: true }
           ],
           createdAt: new Date().toISOString()
         }
@@ -76,6 +78,13 @@ const App: React.FC = () => {
     saveCases(cases.map(c => c.id === updatedCase.id ? updatedCase : c));
   };
 
+  const handleLogin = (success: boolean) => {
+    if (success) {
+      setIsLoggedIn(true);
+      setActiveView('dashboard');
+    }
+  };
+
   const filteredCases = useMemo(() => {
     return cases.filter(c => 
       c.fileNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -89,7 +98,13 @@ const App: React.FC = () => {
   }, [cases, selectedCaseId]);
 
   const renderView = () => {
+    if (!isLoggedIn && activeView !== 'portal') {
+      return <Login onLogin={handleLogin} onBack={() => setActiveView('portal')} />;
+    }
+
     switch (activeView) {
+      case 'portal':
+        return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
       case 'dashboard':
         return (
           <Dashboard 
@@ -125,100 +140,104 @@ const App: React.FC = () => {
       case 'settings':
         return <Settings />;
       default:
-        return <div className="p-8 text-center text-gray-500">View under construction</div>;
+        return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
     }
   };
 
+  // Logic to show/hide sidebar based on view
+  const showSidebar = isLoggedIn && activeView !== 'portal' && activeView !== 'login';
+
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside className={`
-        ${isSidebarOpen ? 'w-64' : 'w-20'} 
-        bg-slate-900 text-white transition-all duration-300 flex flex-col no-print
-      `}>
-        <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-          <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center font-bold text-lg">L</div>
-          {isSidebarOpen && <span className="font-bold text-sm tracking-tight leading-tight">LABOR COMMISSIONER <br/><span className="text-blue-400">RANGAREDDY</span></span>}
-        </div>
-        
-        <nav className="flex-1 mt-6 px-4 space-y-2">
-          <button 
-            onClick={() => setActiveView('dashboard')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${activeView === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <LayoutDashboard size={20} />
-            {isSidebarOpen && <span>Dashboard</span>}
-          </button>
-          <button 
-            onClick={() => setActiveView('create')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${activeView === 'create' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <PlusCircle size={20} />
-            {isSidebarOpen && <span>Create Case</span>}
-          </button>
-          <button 
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
-          >
-            <Users size={20} />
-            {isSidebarOpen && <span>Staff Management</span>}
-          </button>
-          <button 
-            onClick={() => setActiveView('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${activeView === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <SettingsIcon size={20} />
-            {isSidebarOpen && <span>Settings</span>}
-          </button>
-        </nav>
-
-        <div className="p-4 border-t border-slate-800">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white">
-            <LogOut size={20} />
-            {isSidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 no-print">
-          <div className="flex items-center gap-4 flex-1">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1 hover:bg-gray-100 rounded md:hidden"
-            >
-              <Menu size={24} />
-            </button>
-            <div className="relative max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search File No, Applicant, Management..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+    <div className="min-h-screen flex bg-[#FDFBF7]">
+      {showSidebar && (
+        <aside className={`
+          ${isSidebarOpen ? 'w-72' : 'w-20'} 
+          bg-[#0A1628] text-[#F5F0E8] transition-all duration-300 flex flex-col no-print border-r border-[#C9A84C]/20
+        `}>
+          <div className="p-8 flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#C9A84C]/20 border-2 border-[#C9A84C] rounded-xl flex items-center justify-center font-bold text-2xl text-[#C9A84C] shadow-lg shadow-[#C9A84C]/10">
+              <Shield size={24} />
             </div>
+            {isSidebarOpen && (
+              <div className="flex flex-col">
+                <span className="serif font-black text-lg text-[#C9A84C] leading-none tracking-tight">LABOUR ADMIN</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">First Principles OS</span>
+              </div>
+            )}
           </div>
           
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900">Asst. Commissioner</p>
-                <p className="text-xs text-gray-500">Labour Department</p>
-              </div>
-              <img src="https://picsum.photos/seed/admin/40" alt="Admin" className="w-9 h-9 rounded-full bg-gray-200" />
-            </div>
-          </div>
-        </header>
+          <nav className="flex-1 mt-6 px-4 space-y-1">
+            {[
+              { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
+              { id: 'create', label: 'New Identity Record', icon: PlusCircle },
+              { id: 'settings', label: 'System Logic', icon: SettingsIcon },
+            ].map((item) => (
+              <button 
+                key={item.id}
+                onClick={() => setActiveView(item.id as ViewType)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeView === item.id 
+                    ? 'bg-[#C9A84C]/15 text-[#C9A84C] border border-[#C9A84C]/30 shadow-sm' 
+                    : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
+                }`}
+              >
+                <item.icon size={20} />
+                {isSidebarOpen && <span className="text-sm font-bold">{item.label}</span>}
+              </button>
+            ))}
+          </nav>
 
-        {/* View Port */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="p-6 border-t border-white/5 bg-[#0F2044]">
+            <button 
+              onClick={() => {
+                setIsLoggedIn(false);
+                setActiveView('portal');
+              }}
+              className="w-full flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold"
+            >
+              <LogOut size={16} />
+              {isSidebarOpen && <span>TERMINATE SESSION</span>}
+            </button>
+          </div>
+        </aside>
+      )}
+
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {showSidebar && (
+          <header className="h-20 bg-white/80 backdrop-blur-md border-b border-[#C9A84C]/10 flex items-center justify-between px-8 no-print">
+            <div className="flex items-center gap-6 flex-1">
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 hover:bg-slate-100 rounded-lg text-[#0A1628] transition-colors"
+              >
+                <Menu size={24} />
+              </button>
+              <div className="relative max-w-xl w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Query file identity, petitioner, or respondent..."
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:bg-white text-sm font-medium transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              <div className="hidden lg:flex flex-col text-right">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Project</p>
+                <p className="text-xs font-black text-[#0A1628]">Rangareddy Labour Directorate</p>
+              </div>
+              <button className="relative p-2.5 bg-slate-100 text-[#0A1628] hover:bg-slate-200 rounded-xl transition-all">
+                <Bell size={20} />
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#C9A84C] rounded-full border-2 border-white"></span>
+              </button>
+            </div>
+          </header>
+        )}
+
+        <div className={`flex-1 overflow-y-auto ${!showSidebar ? '' : 'p-8'} custom-scrollbar`}>
           {renderView()}
         </div>
       </main>
