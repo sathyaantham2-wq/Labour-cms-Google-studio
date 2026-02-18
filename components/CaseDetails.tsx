@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { LaborCase, CaseStatus, Hearing } from '../types';
+import { GoogleGenAI } from "@google/genai";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -17,7 +18,14 @@ import {
   MoreVertical,
   ChevronRight,
   X,
-  Save
+  Save,
+  ClipboardList,
+  Check,
+  Mail,
+  Phone,
+  Inbox,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 
 interface CaseDetailsProps {
@@ -32,6 +40,9 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
   const [newHearing, setNewHearing] = useState({ date: '', remarks: '' });
   const [isEditingAmount, setIsEditingAmount] = useState(false);
   const [recoveryAmount, setRecoveryAmount] = useState(caseItem.amountRecovered.toString());
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [caseNotes, setCaseNotes] = useState(caseItem.caseNotes || '');
+  const [isRefining, setIsRefining] = useState(false);
 
   const handleAddHearing = () => {
     if (!newHearing.date) return;
@@ -62,6 +73,60 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
       amountRecovered: parseFloat(recoveryAmount) || 0
     });
     setIsEditingAmount(false);
+  };
+
+  const saveNotes = () => {
+    onUpdate({
+      ...caseItem,
+      caseNotes: caseNotes
+    });
+    setIsEditingNotes(false);
+  };
+
+  const handleAIRefine = async () => {
+    if (!caseNotes.trim()) return;
+    
+    setIsRefining(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const historySummary = caseItem.hearings.map(h => 
+        `- ${new Date(h.date).toLocaleDateString()}: ${h.remarks}`
+      ).join('\n');
+
+      const prompt = `
+        As a Senior Labor Investigator, refine the following rough internal case notes into a professional, chronological narrative summary.
+        
+        CASE METADATA:
+        - File Number: ${caseItem.fileNumber}
+        - Petitioner: ${caseItem.applicantName}
+        - Respondent: ${caseItem.managementName}
+        - Subject: ${caseItem.subject}
+        - Hearing History:
+        ${historySummary}
+        
+        ROUGH NOTES TO REFINE:
+        "${caseNotes}"
+        
+        INSTRUCTIONS:
+        1. Maintain objectivity and professional legal tone.
+        2. Correlate fragments with hearing dates if possible.
+        3. Do not invent facts, only structure and clarify existing points.
+        4. Return ONLY the refined narrative text.
+      `;
+
+      const result = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+
+      if (result.text) {
+        setCaseNotes(result.text.trim());
+      }
+    } catch (error) {
+      console.error("AI Refinement Error:", error);
+    } finally {
+      setIsRefining(false);
+    }
   };
 
   return (
@@ -107,7 +172,6 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Core Conflict & Actors (Source of Truth) */}
         <div className="lg:col-span-8 space-y-8">
           {/* The Conflict Atom */}
           <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
@@ -116,7 +180,14 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
                 <AlertCircle size={16} className="text-[#C9A84C]" />
                 Subject Conflict Trace
               </h3>
-              <span className="text-xs font-black text-[#0A1628] underline underline-offset-4 decoration-[#C9A84C] decoration-2 uppercase">{caseItem.section}</span>
+              <div className="flex items-center gap-4">
+                 {caseItem.receivedFrom && (
+                    <span className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg text-[10px] font-black text-slate-400 uppercase">
+                       <Inbox size={12} /> {caseItem.receivedFrom}
+                    </span>
+                 )}
+                 <span className="text-xs font-black text-[#0A1628] underline underline-offset-4 decoration-[#C9A84C] decoration-2 uppercase">{caseItem.section}</span>
+              </div>
             </div>
             <p className="serif text-2xl font-black text-[#0A1628] leading-tight mb-8">"{caseItem.subject}"</p>
             
@@ -149,11 +220,84 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conflict Source</p>
                   <p className="text-sm font-black text-[#0A1628]">{caseItem.managementName}</p>
                 </div>
-                <div className="p-2 bg-white rounded-lg shadow-sm">
-                  <ChevronRight size={20} className="text-slate-300" />
+                <div className="p-2 bg-white rounded-lg shadow-sm text-slate-300">
+                  <Building size={20} />
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Internal Case Notes Section with AI Refinement */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm group">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+                  <ClipboardList size={16} className="text-[#C9A84C]" />
+                  Internal Case Notes
+                </h3>
+                {isEditingNotes && (
+                   <button 
+                     onClick={handleAIRefine}
+                     disabled={isRefining || !caseNotes.trim()}
+                     className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50"
+                   >
+                     {isRefining ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                     {isRefining ? 'Synthesizing...' : 'Refine with AI'}
+                   </button>
+                )}
+              </div>
+              {!isEditingNotes ? (
+                <button 
+                  onClick={() => setIsEditingNotes(true)}
+                  className="p-2 text-slate-400 hover:text-[#0A1628] hover:bg-slate-50 rounded-xl transition-all"
+                >
+                  <Edit3 size={16} />
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsEditingNotes(false)}
+                    className="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                  <button 
+                    onClick={saveNotes}
+                    className="p-2 text-[#C9A84C] hover:text-[#0A1628] bg-[#0A1628]/5 rounded-xl transition-all"
+                  >
+                    <Check size={16} strokeWidth={3} />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {isEditingNotes ? (
+              <div className="relative">
+                <textarea 
+                  className={`w-full p-6 bg-slate-50 border border-[#C9A84C]/30 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-[#C9A84C]/10 min-h-[150px] resize-none transition-all ${isRefining ? 'opacity-50 cursor-wait' : ''}`}
+                  value={caseNotes}
+                  onChange={(e) => setCaseNotes(e.target.value)}
+                  placeholder="Enter internal tracking remarks or raw fragments. Click 'Refine with AI' to generate a professional narrative."
+                  autoFocus
+                />
+                {isRefining && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-[1px] rounded-2xl">
+                     <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="animate-spin text-indigo-600" size={32} />
+                        <span className="text-[10px] font-black uppercase text-indigo-600 tracking-widest animate-pulse">Constructing Story...</span>
+                     </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100 min-h-[100px]">
+                {caseItem.caseNotes ? (
+                  <p className="text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-wrap">{caseItem.caseNotes}</p>
+                ) : (
+                  <p className="text-sm font-medium text-slate-300 italic">No internal notes established for this record.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actor Polarization */}
@@ -166,7 +310,20 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
                <div className="space-y-6">
                   <div>
                     <p className="serif text-2xl font-black text-[#0A1628]">{caseItem.applicantName}</p>
-                    <p className="text-xs font-black text-blue-600 mt-1 uppercase">{caseItem.applicantPhones[0]}</p>
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      {caseItem.applicantPhones.map((phone, idx) => (
+                        <p key={idx} className="text-xs font-black text-blue-600 uppercase flex items-center gap-2">
+                          <Phone size={12} />
+                          {phone}
+                        </p>
+                      ))}
+                      {caseItem.applicantEmail && (
+                        <p className="text-[10px] font-black text-slate-500 lowercase flex items-center gap-2">
+                          <Mail size={12} className="text-[#C9A84C]" />
+                          {caseItem.applicantEmail}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <MapPin size={18} className="text-[#C9A84C] shrink-0" />
@@ -184,6 +341,20 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
                   <div>
                     <p className="serif text-2xl font-black text-white">{caseItem.managementName}</p>
                     <p className="text-xs font-black text-[#C9A84C] mt-1 uppercase">Attn: {caseItem.managementPerson}</p>
+                    <div className="flex flex-col gap-1.5 mt-3">
+                      {caseItem.managementPhones.map((phone, idx) => (
+                        <p key={idx} className="text-xs font-black text-slate-300 uppercase flex items-center gap-2">
+                          <Phone size={12} className="text-[#C9A84C]" />
+                          {phone}
+                        </p>
+                      ))}
+                      {caseItem.managementEmail && (
+                        <p className="text-[10px] font-black text-[#C9A84C] lowercase flex items-center gap-2">
+                          <Mail size={12} />
+                          {caseItem.managementEmail}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-4 items-start p-4 bg-white/5 rounded-2xl border border-white/10">
                     <MapPin size={18} className="text-[#C9A84C] shrink-0" />

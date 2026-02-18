@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, 
@@ -46,6 +45,7 @@ const App: React.FC = () => {
           id: '1',
           fileNumber: 'TG/LC/2025/001',
           receivedDate: '2025-01-15',
+          receivedFrom: 'By Hand',
           section: 'Minimum Wages',
           applicantName: 'Rajesh Kumar Yadav',
           applicantPhones: ['9876543210'],
@@ -53,7 +53,7 @@ const App: React.FC = () => {
           applicantAddress: 'Plot 45, Jubilee Hills, Hyderabad',
           managementName: 'Sunrise Textiles Pvt Ltd',
           managementPerson: 'Sri K. Venkatesh',
-          managementPhone: '8887776660',
+          managementPhones: ['8887776660'],
           managementEmail: 'hr@sunrisetextiles.com',
           managementAddress: 'HITEC City, Phase 2, Hyderabad',
           subject: 'Unpaid Wages – 6 Months Arrears',
@@ -104,17 +104,14 @@ const App: React.FC = () => {
   }, [cases, selectedCaseId]);
 
   const renderView = () => {
-    // Priority 1: Public Portal
     if (activeView === 'portal') {
       return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
     }
 
-    // Priority 2: Security Gateway
     if (activeView === 'login' || !isLoggedIn) {
       return <Login onLogin={handleLogin} onBack={() => setActiveView('portal')} />;
     }
 
-    // Priority 3: Restricted Dashboards
     switch (activeView) {
       case 'dashboard':
         return (
@@ -237,7 +234,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-6">
               <div className="hidden lg:flex flex-col text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Project</p>
-                <p className="text-xs font-black text-[#0A1628]">Rangareddy Labour Directorate</p>
+                <p className="text-xs font-black text-[#0A1628]">Office of the Asst. Commissioner of Labour</p>
               </div>
               <button className="relative p-2.5 bg-slate-100 text-[#0A1628] hover:bg-slate-200 rounded-xl transition-all">
                 <Bell size={20} />

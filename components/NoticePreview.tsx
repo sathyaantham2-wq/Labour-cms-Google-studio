@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { LaborCase, Hearing } from '../types';
 import { Printer, ArrowLeft, Send, CheckCircle, AlertCircle, Loader2, ChevronDown, Calendar } from 'lucide-react';
@@ -51,7 +50,7 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
         management: {
           name: caseItem.managementName,
           person: caseItem.managementPerson,
-          phone: caseItem.managementPhone,
+          phones: caseItem.managementPhones,
           email: caseItem.managementEmail,
           address: caseItem.managementAddress
         },
@@ -178,7 +177,7 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
                 <p className="font-black">The Managing Director / Manager,</p>
                 <p className="font-black text-lg">{caseItem.managementName}</p>
                 <p className="italic text-slate-700">{caseItem.managementAddress}</p>
-                <p className="mt-2 font-bold text-slate-800">Contact: {caseItem.managementPerson} ({caseItem.managementPhone})</p>
+                <p className="mt-2 font-bold text-slate-800">Contact: {caseItem.managementPerson} ({caseItem.managementPhones[0]})</p>
               </div>
             </div>
 
