@@ -14,17 +14,20 @@ import {
   Filter,
   IndianRupee,
   Clock,
-  CalendarDays
+  CalendarDays,
+  Archive,
+  RotateCcw
 } from 'lucide-react';
 
 interface DashboardProps {
   cases: LaborCase[];
   onViewDetails: (id: string) => void;
   onGenerateNotice: (id: string) => void;
+  onArchive: (id: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateNotice }) => {
-  const [statusFilter, setStatusFilter] = useState<CaseStatus | 'ALL'>('ALL');
+const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateNotice, onArchive }) => {
+  const [statusFilter, setStatusFilter] = useState<CaseStatus | 'ALL' | 'ARCHIVED'>('ALL');
 
   // Temporal Logic for Today and Tomorrow
   const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
@@ -32,37 +35,46 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
 
+  const activeCases = useMemo(() => cases.filter(c => c.status !== CaseStatus.ARCHIVED), [cases]);
+
   const todayMeetingsCount = useMemo(() => {
-    return cases.reduce((acc, c) => 
+    return activeCases.reduce((acc, c) => 
       acc + c.hearings.filter(h => h.date.startsWith(todayStr)).length, 0
     );
-  }, [cases, todayStr]);
+  }, [activeCases, todayStr]);
 
   const tomorrowMeetingsCount = useMemo(() => {
-    return cases.reduce((acc, c) => 
+    return activeCases.reduce((acc, c) => 
       acc + c.hearings.filter(h => h.date.startsWith(tomorrowStr)).length, 0
     );
-  }, [cases, tomorrowStr]);
+  }, [activeCases, tomorrowStr]);
 
   const stats = [
-    { label: 'Atomic Records', value: cases.length, icon: Layers, color: 'blue' },
-    { label: 'Capital Recovered', value: `₹${cases.reduce((sum, c) => sum + (c.amountRecovered || 0), 0).toLocaleString()}`, icon: TrendingUp, color: 'gold' },
+    { label: 'Active Records', value: activeCases.length, icon: Layers, color: 'blue' },
+    { label: 'Capital Recovered', value: `₹${activeCases.reduce((sum, c) => sum + (c.amountRecovered || 0), 0).toLocaleString()}`, icon: TrendingUp, color: 'gold' },
     { label: "Today's Agenda", value: todayMeetingsCount, icon: Clock, color: 'pulse', sub: 'Active Events' },
     { label: 'Tomorrow Schedule', value: tomorrowMeetingsCount, icon: CalendarDays, color: 'navy', sub: 'Next Cycle' },
-    { label: 'Open Conflicts', value: cases.filter(c => c.status === CaseStatus.OPEN).length, icon: AlertCircle, color: 'orange' },
-    { label: 'Resolved Events', value: cases.filter(c => c.status === CaseStatus.CLOSED).length, icon: CheckCircle, color: 'emerald' },
+    { label: 'Open Conflicts', value: activeCases.filter(c => c.status === CaseStatus.OPEN).length, icon: AlertCircle, color: 'orange' },
+    { label: 'Archived Trace', value: cases.filter(c => c.status === CaseStatus.ARCHIVED).length, icon: Archive, color: 'slate' },
   ];
 
   const displayedCases = useMemo(() => {
-    if (statusFilter === 'ALL') return cases;
+    if (statusFilter === 'ALL') {
+      // Hide archived by default when viewing 'ALL'
+      return cases.filter(c => c.status !== CaseStatus.ARCHIVED);
+    }
+    if (statusFilter === 'ARCHIVED') {
+      return cases.filter(c => c.status === CaseStatus.ARCHIVED);
+    }
     return cases.filter(c => c.status === statusFilter);
   }, [cases, statusFilter]);
 
   const filterOptions = [
-    { label: 'All Records', value: 'ALL' },
+    { label: 'All Active', value: 'ALL' },
     { label: 'Open', value: CaseStatus.OPEN },
     { label: 'Pending', value: CaseStatus.PENDING },
     { label: 'Closed', value: CaseStatus.CLOSED },
+    { label: 'Archived', value: 'ARCHIVED' },
   ];
 
   return (
@@ -119,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
         <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="serif text-xl font-black text-[#0A1628] flex items-center gap-3">
             <Search size={22} className="text-[#C9A84C]" />
-            Active Case Trace
+            {statusFilter === 'ARCHIVED' ? 'Archived Records' : 'Active Case Trace'}
           </h2>
           
           {/* Status Filter Component */}
@@ -127,12 +139,12 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
             <div className="px-3 text-[#0A1628] opacity-40">
               <Filter size={14} />
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar">
               {filterOptions.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setStatusFilter(opt.value as any)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                     statusFilter === opt.value
                       ? 'bg-[#0A1628] text-[#C9A84C] shadow-lg'
                       : 'text-slate-500 hover:text-[#0A1628] hover:bg-white'
@@ -160,7 +172,7 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
             <tbody className="divide-y divide-slate-50">
               {displayedCases.length > 0 ? (
                 displayedCases.map((c) => (
-                  <tr key={c.id} className="hover:bg-[#C9A84C]/5 transition-all group cursor-pointer" onClick={() => onViewDetails(c.id)}>
+                  <tr key={c.id} className={`hover:bg-[#C9A84C]/5 transition-all group cursor-pointer ${c.status === CaseStatus.ARCHIVED ? 'opacity-70' : ''}`} onClick={() => onViewDetails(c.id)}>
                     <td className="px-8 py-6">
                       <div className="flex flex-col">
                         <span className="serif font-black text-[#0A1628] text-lg tracking-tight group-hover:text-[#C9A84C] transition-colors">{c.fileNumber}</span>
@@ -200,6 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
                           c.status === CaseStatus.OPEN ? 'bg-orange-100 text-orange-700' : 
                           c.status === CaseStatus.CLOSED ? 'bg-emerald-100 text-emerald-700' : 
+                          c.status === CaseStatus.ARCHIVED ? 'bg-slate-200 text-slate-500' :
                           'bg-slate-100 text-slate-700'
                         }`}>
                           {c.status}
@@ -216,6 +229,26 @@ const Dashboard: React.FC<DashboardProps> = ({ cases, onViewDetails, onGenerateN
                     </td>
                     <td className="px-8 py-6 text-right">
                       <div className="flex justify-end items-center gap-3">
+                        {c.status === CaseStatus.ARCHIVED ? (
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              onArchive(c.id); // Re-using onArchive for toggle or adding onRestore
+                            }}
+                            className="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-emerald-100"
+                            title="Restore Record"
+                          >
+                            <RotateCcw size={18} />
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onArchive(c.id); }}
+                            className="p-2.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-all border border-slate-200"
+                            title="Archive Record"
+                          >
+                            <Archive size={18} />
+                          </button>
+                        )}
                         <button 
                           onClick={(e) => { e.stopPropagation(); onGenerateNotice(c.id); }}
                           className="p-2.5 text-[#0A1628] hover:bg-[#0A1628] hover:text-[#C9A84C] rounded-xl transition-all border border-slate-200"

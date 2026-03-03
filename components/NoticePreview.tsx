@@ -1,6 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { LaborCase, Hearing } from '../types';
 import { Printer, ArrowLeft, Send, CheckCircle, AlertCircle, Loader2, ChevronDown, Calendar } from 'lucide-react';
+import { triggerAutomationWebhook } from '../services/automationService.ts';
 
 interface NoticePreviewProps {
   caseItem: LaborCase;
@@ -26,18 +28,11 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
   };
 
   const handleSendAutomation = async () => {
-    const webhookUrl = localStorage.getItem('make_webhook_url');
-    if (!webhookUrl) {
-      alert("Please configure the Make.com Webhook URL in Settings first!");
-      return;
-    }
-
     setIsSending(true);
     setSendStatus('idle');
 
     try {
       const payload = {
-        timestamp: new Date().toISOString(),
         fileNumber: caseItem.fileNumber,
         section: caseItem.section,
         subject: caseItem.subject,
@@ -50,7 +45,7 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
         management: {
           name: caseItem.managementName,
           person: caseItem.managementPerson,
-          phones: caseItem.managementPhones,
+          phone: caseItem.managementPhone,
           email: caseItem.managementEmail,
           address: caseItem.managementAddress
         },
@@ -58,17 +53,8 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
         noticeContent: `OFFICIAL JOINT MEETING NOTICE: Reference File ${caseItem.fileNumber}. You are hereby directed to attend a joint meeting regarding ${caseItem.subject} on ${selectedEvent ? new Date(selectedEvent.date).toLocaleString() : 'TBD'}.`
       };
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        setSendStatus('success');
-      } else {
-        setSendStatus('error');
-      }
+      await triggerAutomationWebhook('notice_sent_manually', payload);
+      setSendStatus('success');
     } catch (error) {
       console.error("Webhook Error:", error);
       setSendStatus('error');
@@ -177,7 +163,7 @@ const NoticePreview: React.FC<NoticePreviewProps> = ({ caseItem, onBack }) => {
                 <p className="font-black">The Managing Director / Manager,</p>
                 <p className="font-black text-lg">{caseItem.managementName}</p>
                 <p className="italic text-slate-700">{caseItem.managementAddress}</p>
-                <p className="mt-2 font-bold text-slate-800">Contact: {caseItem.managementPerson} ({caseItem.managementPhones[0]})</p>
+                <p className="mt-2 font-bold text-slate-800">Contact: {caseItem.managementPerson} ({caseItem.managementPhone})</p>
               </div>
             </div>
 

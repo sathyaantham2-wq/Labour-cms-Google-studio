@@ -3,16 +3,20 @@ import React, { useState, useEffect } from 'react';
 import { Save, Link, Bell, Shield, Database } from 'lucide-react';
 
 const Settings: React.FC = () => {
-  const [webhookUrl, setWebhookUrl] = useState('');
+  const [makeUrl, setMakeUrl] = useState('');
+  const [n8nUrl, setN8nUrl] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    const savedUrl = localStorage.getItem('make_webhook_url');
-    if (savedUrl) setWebhookUrl(savedUrl);
+    const savedMakeUrl = localStorage.getItem('make_webhook_url');
+    const savedN8nUrl = localStorage.getItem('n8n_webhook_url');
+    if (savedMakeUrl) setMakeUrl(savedMakeUrl);
+    if (savedN8nUrl) setN8nUrl(savedN8nUrl);
   }, []);
 
   const handleSave = () => {
-    localStorage.setItem('make_webhook_url', webhookUrl);
+    localStorage.setItem('make_webhook_url', makeUrl);
+    localStorage.setItem('n8n_webhook_url', n8nUrl);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
@@ -30,24 +34,38 @@ const Settings: React.FC = () => {
           <div className="p-6 border-b border-gray-100 flex items-center gap-3 bg-slate-50">
             <Link className="text-blue-600" size={24} />
             <div>
-              <h2 className="font-bold text-gray-800">Make.com Integration</h2>
-              <p className="text-xs text-gray-500">Trigger WhatsApp and Email notifications automatically.</p>
+              <h2 className="font-bold text-gray-800">Automation Integrations</h2>
+              <p className="text-xs text-gray-500">Trigger external workflows automatically via Webhooks.</p>
             </div>
           </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Notice Webhook URL</label>
-              <input 
-                type="text"
-                placeholder="https://hook.us1.make.com/your-unique-id"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-              />
-              <p className="mt-2 text-xs text-gray-500">
-                Data sent to this URL includes: File Number, Applicant Details, Management Details, and Notice Content.
-              </p>
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">n8n Webhook URL</label>
+                <input 
+                  type="text"
+                  placeholder="https://your-n8n.instance/webhook/..."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                  value={n8nUrl}
+                  onChange={(e) => setN8nUrl(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Make.com Webhook URL</label>
+                <input 
+                  type="text"
+                  placeholder="https://hook.us1.make.com/..."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                  value={makeUrl}
+                  onChange={(e) => setMakeUrl(e.target.value)}
+                />
+              </div>
             </div>
+            
+            <p className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
+              <strong>Data Payload:</strong> When triggered, the system sends a JSON object containing the <code>event</code> type, <code>timestamp</code>, and the full <code>case</code> data.
+            </p>
+
             <div className="flex justify-end pt-2">
               <button 
                 onClick={handleSave}

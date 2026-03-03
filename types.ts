@@ -1,7 +1,9 @@
+
 export enum CaseStatus {
   OPEN = 'Open',
   CLOSED = 'Closed',
-  PENDING = 'Pending'
+  PENDING = 'Pending',
+  ARCHIVED = 'Archived'
 }
 
 export interface Hearing {
@@ -15,7 +17,6 @@ export interface LaborCase {
   id: string;
   fileNumber: string; // Format: A/0000/202X
   receivedDate: string;
-  receivedFrom: string; // Source of the representation
   section: string;
   
   applicantName: string;
@@ -25,12 +26,11 @@ export interface LaborCase {
   
   managementName: string;
   managementPerson: string;
-  managementPhones: string[]; // Updated to array
+  managementPhone: string;
   managementEmail: string;
   managementAddress: string;
   
   subject: string;
-  caseNotes?: string; // Internal tracking
   amountRecovered: number;
   status: CaseStatus;
   

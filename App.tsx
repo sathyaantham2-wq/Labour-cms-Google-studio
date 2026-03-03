@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, 
@@ -20,6 +21,7 @@ import NoticePreview from './components/NoticePreview.tsx';
 import Settings from './components/Settings.tsx';
 import PublicPortal from './components/PublicPortal.tsx';
 import Login from './components/Login.tsx';
+import { triggerAutomationWebhook } from './services/automationService.ts';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>('portal');
@@ -45,7 +47,6 @@ const App: React.FC = () => {
           id: '1',
           fileNumber: 'TG/LC/2025/001',
           receivedDate: '2025-01-15',
-          receivedFrom: 'By Hand',
           section: 'Minimum Wages',
           applicantName: 'Rajesh Kumar Yadav',
           applicantPhones: ['9876543210'],
@@ -53,7 +54,7 @@ const App: React.FC = () => {
           applicantAddress: 'Plot 45, Jubilee Hills, Hyderabad',
           managementName: 'Sunrise Textiles Pvt Ltd',
           managementPerson: 'Sri K. Venkatesh',
-          managementPhones: ['8887776660'],
+          managementPhone: '8887776660',
           managementEmail: 'hr@sunrisetextiles.com',
           managementAddress: 'HITEC City, Phase 2, Hyderabad',
           subject: 'Unpaid Wages – 6 Months Arrears',
@@ -77,11 +78,38 @@ const App: React.FC = () => {
 
   const handleCreateCase = (newCase: LaborCase) => {
     saveCases([newCase, ...cases]);
+    triggerAutomationWebhook('case_created', newCase);
     setActiveView('dashboard');
   };
 
   const handleUpdateCase = (updatedCase: LaborCase) => {
     saveCases(cases.map(c => c.id === updatedCase.id ? updatedCase : c));
+    triggerAutomationWebhook('case_updated', updatedCase);
+  };
+
+  const handleArchiveCase = (id: string) => {
+    const caseToArchive = cases.find(c => c.id === id);
+    if (caseToArchive) {
+      const isArchived = caseToArchive.status === CaseStatus.ARCHIVED;
+      const updatedCase = { 
+        ...caseToArchive, 
+        status: isArchived ? CaseStatus.OPEN : CaseStatus.ARCHIVED 
+      };
+      saveCases(cases.map(c => c.id === id ? updatedCase : c));
+      triggerAutomationWebhook(isArchived ? 'case_restored' : 'case_archived', updatedCase);
+    }
+  };
+
+  const handleIssueAdvice = (id: string, hearingId?: string) => {
+    const c = cases.find(item => item.id === id);
+    if (c) {
+      const hearing = hearingId ? c.hearings.find(h => h.id === hearingId) : null;
+      triggerAutomationWebhook('advice_letter_issued', { 
+        case: c, 
+        hearing: hearing 
+      });
+      alert(`Advice Letter issued for ${c.fileNumber}. Automation triggered.`);
+    }
   };
 
   const handleLogin = (success: boolean) => {
@@ -123,8 +151,11 @@ const App: React.FC = () => {
             }}
             onGenerateNotice={(id) => {
               setSelectedCaseId(id);
+              const c = cases.find(item => item.id === id);
+              if (c) triggerAutomationWebhook('notice_generation_started', c);
               setActiveView('notice');
             }}
+            onArchive={handleArchiveCase}
           />
         );
       case 'create':
@@ -135,7 +166,12 @@ const App: React.FC = () => {
             caseItem={selectedCase} 
             onUpdate={handleUpdateCase} 
             onBack={() => setActiveView('dashboard')} 
-            onNotice={() => setActiveView('notice')}
+            onNotice={() => {
+              triggerAutomationWebhook('notice_generation_started', selectedCase);
+              setActiveView('notice');
+            }}
+            onArchive={handleArchiveCase}
+            onAdvice={(hearingId) => handleIssueAdvice(selectedCase.id, hearingId)}
           />
         ) : null;
       case 'notice':
