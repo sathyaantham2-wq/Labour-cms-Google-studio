@@ -1,17 +1,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  PlusCircle, 
-  Users, 
-  Settings as SettingsIcon, 
-  FileText, 
+import {
+  LayoutDashboard,
+  PlusCircle,
+  Settings as SettingsIcon,
   Search,
   Bell,
   LogOut,
   Menu,
   Shield,
-  Briefcase
 } from 'lucide-react';
 import { LaborCase, ViewType, CaseStatus } from './types.ts';
 import Dashboard from './components/Dashboard.tsx';
@@ -22,6 +19,7 @@ import Settings from './components/Settings.tsx';
 import PublicPortal from './components/PublicPortal.tsx';
 import Login from './components/Login.tsx';
 import { triggerAutomationWebhook } from './services/automationService.ts';
+import { api } from './services/api.ts';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewType>('portal');
@@ -30,84 +28,64 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [cases, setCases] = useState<LaborCase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Load cases from API when logged in
   useEffect(() => {
-    const savedCases = localStorage.getItem('labor_cases');
-    if (savedCases) {
-      try {
-        const parsed = JSON.parse(savedCases);
-        setCases(Array.isArray(parsed) ? parsed : []);
-      } catch (e) {
-        console.error("Failed to parse local cases", e);
-        setCases([]);
-      }
-    } else {
-      const mockCases: LaborCase[] = [
-        {
-          id: '1',
-          fileNumber: 'TG/LC/2025/001',
-          receivedDate: '2025-01-15',
-          section: 'Minimum Wages',
-          applicantName: 'Rajesh Kumar Yadav',
-          applicantPhones: ['9876543210'],
-          applicantEmail: 'rajesh.yadav@example.com',
-          applicantAddress: 'Plot 45, Jubilee Hills, Hyderabad',
-          managementName: 'Sunrise Textiles Pvt Ltd',
-          managementPerson: 'Sri K. Venkatesh',
-          managementPhone: '8887776660',
-          managementEmail: 'hr@sunrisetextiles.com',
-          managementAddress: 'HITEC City, Phase 2, Hyderabad',
-          subject: 'Unpaid Wages – 6 Months Arrears',
-          amountRecovered: 148000,
-          status: CaseStatus.OPEN,
-          hearings: [
-            { id: 'h1', date: '2025-02-10T10:30', remarks: 'Case registered. Notice issued to Management.', isCompleted: true }
-          ],
-          createdAt: new Date().toISOString()
-        }
-      ];
-      setCases(mockCases);
-      localStorage.setItem('labor_cases', JSON.stringify(mockCases));
+    if (isLoggedIn) {
+      setIsLoading(true);
+      api.getCases()
+        .then(setCases)
+        .catch((err) => console.error('Failed to load cases:', err))
+        .finally(() => setIsLoading(false));
     }
-  }, []);
+  }, [isLoggedIn]);
 
-  const saveCases = (updatedCases: LaborCase[]) => {
-    setCases(updatedCases);
-    localStorage.setItem('labor_cases', JSON.stringify(updatedCases));
+  const handleCreateCase = async (newCase: LaborCase) => {
+    try {
+      await api.createCase(newCase);
+      setCases((prev) => [newCase, ...prev]);
+      triggerAutomationWebhook('case_created', newCase);
+      setActiveView('dashboard');
+    } catch (err: unknown) {
+      alert(`Failed to save case: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
-  const handleCreateCase = (newCase: LaborCase) => {
-    saveCases([newCase, ...cases]);
-    triggerAutomationWebhook('case_created', newCase);
-    setActiveView('dashboard');
+  const handleUpdateCase = async (updatedCase: LaborCase) => {
+    try {
+      await api.updateCase(updatedCase);
+      setCases((prev) => prev.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
+      triggerAutomationWebhook('case_updated', updatedCase);
+    } catch (err: unknown) {
+      alert(`Failed to update case: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
-  const handleUpdateCase = (updatedCase: LaborCase) => {
-    saveCases(cases.map(c => c.id === updatedCase.id ? updatedCase : c));
-    triggerAutomationWebhook('case_updated', updatedCase);
-  };
+  const handleArchiveCase = async (id: string) => {
+    const caseToArchive = cases.find((c) => c.id === id);
+    if (!caseToArchive) return;
 
-  const handleArchiveCase = (id: string) => {
-    const caseToArchive = cases.find(c => c.id === id);
-    if (caseToArchive) {
-      const isArchived = caseToArchive.status === CaseStatus.ARCHIVED;
-      const updatedCase = { 
-        ...caseToArchive, 
-        status: isArchived ? CaseStatus.OPEN : CaseStatus.ARCHIVED 
-      };
-      saveCases(cases.map(c => c.id === id ? updatedCase : c));
+    const isArchived = caseToArchive.status === CaseStatus.ARCHIVED;
+    const updatedCase = {
+      ...caseToArchive,
+      status: isArchived ? CaseStatus.OPEN : CaseStatus.ARCHIVED,
+    };
+
+    try {
+      await api.updateCase(updatedCase);
+      setCases((prev) => prev.map((c) => (c.id === id ? updatedCase : c)));
       triggerAutomationWebhook(isArchived ? 'case_restored' : 'case_archived', updatedCase);
+    } catch (err: unknown) {
+      alert(`Failed to archive case: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   const handleIssueAdvice = (id: string, hearingId?: string) => {
-    const c = cases.find(item => item.id === id);
+    const c = cases.find((item) => item.id === id);
     if (c) {
-      const hearing = hearingId ? c.hearings.find(h => h.id === hearingId) : null;
-      triggerAutomationWebhook('advice_letter_issued', { 
-        case: c, 
-        hearing: hearing 
-      });
+      const hearing = hearingId ? c.hearings.find((h) => h.id === hearingId) : null;
+      triggerAutomationWebhook('advice_letter_issued', { case: c, hearing });
       alert(`Advice Letter issued for ${c.fileNumber}. Automation triggered.`);
     }
   };
@@ -119,39 +97,58 @@ const App: React.FC = () => {
     }
   };
 
-  const filteredCases = useMemo(() => {
-    return cases.filter(c => 
-      c.fileNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.managementName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [cases, searchQuery]);
+  const handleLogout = () => {
+    api.logout();
+    setIsLoggedIn(false);
+    setCases([]);
+    setActiveView('portal');
+  };
 
-  const selectedCase = useMemo(() => {
-    return cases.find(c => c.id === selectedCaseId) || null;
-  }, [cases, selectedCaseId]);
+  const filteredCases = useMemo(
+    () =>
+      cases.filter(
+        (c) =>
+          c.fileNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.managementName.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [cases, searchQuery]
+  );
+
+  const selectedCase = useMemo(
+    () => cases.find((c) => c.id === selectedCaseId) || null,
+    [cases, selectedCaseId]
+  );
 
   const renderView = () => {
     if (activeView === 'portal') {
-      return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
+      return <PublicPortal onAdminAccess={() => setActiveView('login')} />;
     }
 
     if (activeView === 'login' || !isLoggedIn) {
       return <Login onLogin={handleLogin} onBack={() => setActiveView('portal')} />;
     }
 
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-slate-400 font-bold animate-pulse">Loading cases…</p>
+        </div>
+      );
+    }
+
     switch (activeView) {
       case 'dashboard':
         return (
-          <Dashboard 
-            cases={filteredCases} 
+          <Dashboard
+            cases={filteredCases}
             onViewDetails={(id) => {
               setSelectedCaseId(id);
               setActiveView('details');
             }}
             onGenerateNotice={(id) => {
               setSelectedCaseId(id);
-              const c = cases.find(item => item.id === id);
+              const c = cases.find((item) => item.id === id);
               if (c) triggerAutomationWebhook('notice_generation_started', c);
               setActiveView('notice');
             }}
@@ -162,10 +159,10 @@ const App: React.FC = () => {
         return <CaseForm onSubmit={handleCreateCase} onCancel={() => setActiveView('dashboard')} />;
       case 'details':
         return selectedCase ? (
-          <CaseDetails 
-            caseItem={selectedCase} 
-            onUpdate={handleUpdateCase} 
-            onBack={() => setActiveView('dashboard')} 
+          <CaseDetails
+            caseItem={selectedCase}
+            onUpdate={handleUpdateCase}
+            onBack={() => setActiveView('dashboard')}
             onNotice={() => {
               triggerAutomationWebhook('notice_generation_started', selectedCase);
               setActiveView('notice');
@@ -176,15 +173,12 @@ const App: React.FC = () => {
         ) : null;
       case 'notice':
         return selectedCase ? (
-          <NoticePreview 
-            caseItem={selectedCase} 
-            onBack={() => setActiveView('details')} 
-          />
+          <NoticePreview caseItem={selectedCase} onBack={() => setActiveView('details')} />
         ) : null;
       case 'settings':
         return <Settings />;
       default:
-        return <PublicPortal cases={cases} onAdminAccess={() => setActiveView('login')} />;
+        return <PublicPortal onAdminAccess={() => setActiveView('login')} />;
     }
   };
 
@@ -193,10 +187,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-[#FDFBF7]">
       {showSidebar && (
-        <aside className={`
-          ${isSidebarOpen ? 'w-72' : 'w-20'} 
-          bg-[#0A1628] text-[#F5F0E8] transition-all duration-300 flex flex-col no-print border-r border-[#C9A84C]/20
-        `}>
+        <aside
+          className={`
+            ${isSidebarOpen ? 'w-72' : 'w-20'}
+            bg-[#0A1628] text-[#F5F0E8] transition-all duration-300 flex flex-col no-print border-r border-[#C9A84C]/20
+          `}
+        >
           <div className="p-8 flex items-center gap-4">
             <div className="w-12 h-12 bg-[#C9A84C]/20 border-2 border-[#C9A84C] rounded-xl flex items-center justify-center font-bold text-2xl text-[#C9A84C] shadow-lg shadow-[#C9A84C]/10">
               <Shield size={24} />
@@ -208,19 +204,19 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <nav className="flex-1 mt-6 px-4 space-y-1">
             {[
               { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
               { id: 'create', label: 'New Identity Record', icon: PlusCircle },
               { id: 'settings', label: 'System Logic', icon: SettingsIcon },
             ].map((item) => (
-              <button 
+              <button
                 key={item.id}
                 onClick={() => setActiveView(item.id as ViewType)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  activeView === item.id 
-                    ? 'bg-[#C9A84C]/15 text-[#C9A84C] border border-[#C9A84C]/30 shadow-sm' 
+                  activeView === item.id
+                    ? 'bg-[#C9A84C]/15 text-[#C9A84C] border border-[#C9A84C]/30 shadow-sm'
                     : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
                 }`}
               >
@@ -231,11 +227,8 @@ const App: React.FC = () => {
           </nav>
 
           <div className="p-6 border-t border-white/5 bg-[#0F2044]">
-            <button 
-              onClick={() => {
-                setIsLoggedIn(false);
-                setActiveView('portal');
-              }}
+            <button
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold"
             >
               <LogOut size={16} />
@@ -249,7 +242,7 @@ const App: React.FC = () => {
         {showSidebar && (
           <header className="h-20 bg-white/80 backdrop-blur-md border-b border-[#C9A84C]/10 flex items-center justify-between px-8 no-print">
             <div className="flex items-center gap-6 flex-1">
-              <button 
+              <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="p-2 hover:bg-slate-100 rounded-lg text-[#0A1628] transition-colors"
               >
@@ -257,8 +250,8 @@ const App: React.FC = () => {
               </button>
               <div className="relative max-w-xl w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Query file identity, petitioner, or respondent..."
                   className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:bg-white text-sm font-medium transition-all"
                   value={searchQuery}
@@ -266,7 +259,7 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center gap-6">
               <div className="hidden lg:flex flex-col text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Project</p>

@@ -1,13 +1,16 @@
 {
   "name": "labor-case-management-system",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "cd server && node index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "install:server": "cd server && npm install",
+    "setup": "npm install && npm run install:server"
   },
   "dependencies": {
     "react": "^19.2.4",
