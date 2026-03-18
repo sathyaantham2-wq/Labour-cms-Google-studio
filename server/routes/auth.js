@@ -6,6 +6,15 @@ const { JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
+router.post('/logout', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    db.prepare('INSERT OR IGNORE INTO revoked_tokens (token, revokedAt) VALUES (?, ?)').run(token, new Date().toISOString());
+  }
+  res.json({ success: true });
+});
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
 

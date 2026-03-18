@@ -1,4 +1,4 @@
-import { LaborCase } from '../types';
+import { LaborCase, User, Attachment, AuditEntry, ReportSummary } from '../types';
 
 // In dev, Vite proxies /api → http://localhost:4000
 // In production, the Express server serves both on the same origin
@@ -34,7 +34,10 @@ export const api = {
     return data;
   },
 
-  logout: (): void => {
+  logout: async (): Promise<void> => {
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', headers: authHeaders() });
+    } catch { /* ignore network errors on logout */ }
     localStorage.removeItem('auth_token');
   },
 
@@ -69,6 +72,103 @@ export const api = {
       `${API_BASE}/api/cases/public/${encodeURIComponent(fileNumber)}`,
       { headers: { 'Content-Type': 'application/json' } }
     );
+    return handleResponse(res);
+  },
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  exportCases: (): void => {
+    const token = getToken();
+    const url = `${API_BASE}/api/cases/export`;
+    const a = document.createElement('a');
+    // Use fetch to carry the auth header then trigger download
+    fetch(url, { headers: authHeaders() })
+      .then((r) => r.blob())
+      .then((blob) => {
+        a.href = URL.createObjectURL(blob);
+        a.download = 'cases_export.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+  },
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+  getUsers: async (): Promise<User[]> => {
+    const res = await fetch(`${API_BASE}/api/users`, { headers: authHeaders() });
+    return handleResponse(res);
+  },
+
+  createUser: async (username: string, password: string, role: string): Promise<User> => {
+    const res = await fetch(`${API_BASE}/api/users`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ username, password, role }),
+    });
+    return handleResponse(res);
+  },
+
+  updateUser: async (id: number, username: string, role: string): Promise<User> => {
+    const res = await fetch(`${API_BASE}/api/users/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ username, role }),
+    });
+    return handleResponse(res);
+  },
+
+  changePassword: async (id: number, currentPassword: string, newPassword: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/api/users/${id}/password`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return handleResponse(res);
+  },
+
+  deleteUser: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/api/users/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+  getAttachments: async (caseId: string): Promise<Attachment[]> => {
+    const res = await fetch(`${API_BASE}/api/attachments/${caseId}`, { headers: authHeaders() });
+    return handleResponse(res);
+  },
+
+  uploadAttachment: async (caseId: string, file: File): Promise<Attachment> => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/api/attachments/${caseId}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+
+  deleteAttachment: async (attachmentId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/api/attachments/${attachmentId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  getAttachmentUrl: (attachmentId: string): string => `${API_BASE}/api/attachments/file/${attachmentId}`,
+
+  // ── Reports ───────────────────────────────────────────────────────────────
+  getReportSummary: async (): Promise<ReportSummary> => {
+    const res = await fetch(`${API_BASE}/api/reports/summary`, { headers: authHeaders() });
+    return handleResponse(res);
+  },
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  getCaseHistory: async (caseId: string): Promise<AuditEntry[]> => {
+    const res = await fetch(`${API_BASE}/api/audit/cases/${caseId}`, { headers: authHeaders() });
     return handleResponse(res);
   },
 

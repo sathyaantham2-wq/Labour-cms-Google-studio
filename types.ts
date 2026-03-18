@@ -38,4 +38,44 @@ export interface LaborCase {
   createdAt: string;
 }
 
-export type ViewType = 'portal' | 'login' | 'dashboard' | 'create' | 'details' | 'notice' | 'settings';
+export interface User {
+  id: number;
+  username: string;
+  role: 'admin' | 'officer' | 'viewer';
+  createdAt: string;
+}
+
+export interface Attachment {
+  id: string;
+  caseId: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  userId: number;
+  username: string;
+  diff: string;
+}
+
+export interface ReportSummary {
+  totalCases: number;
+  openCases: number;
+  pendingCases: number;
+  closedCases: number;
+  archivedCases: number;
+  totalAmount: number;
+  bySection: { section: string; count: number }[];
+  monthly: { month: string; count: number }[];
+}
+
+export type ViewType = 'portal' | 'login' | 'dashboard' | 'create' | 'details' | 'notice' | 'settings' | 'users' | 'reports';

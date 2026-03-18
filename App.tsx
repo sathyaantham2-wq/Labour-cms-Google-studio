@@ -9,6 +9,8 @@ import {
   LogOut,
   Menu,
   Shield,
+  Users,
+  BarChart3,
 } from 'lucide-react';
 import { LaborCase, ViewType, CaseStatus } from './types.ts';
 import Dashboard from './components/Dashboard.tsx';
@@ -18,6 +20,8 @@ import NoticePreview from './components/NoticePreview.tsx';
 import Settings from './components/Settings.tsx';
 import PublicPortal from './components/PublicPortal.tsx';
 import Login from './components/Login.tsx';
+import UserManagement from './components/UserManagement.tsx';
+import Reports from './components/Reports.tsx';
 import { triggerAutomationWebhook } from './services/automationService.ts';
 import { api } from './services/api.ts';
 
@@ -97,8 +101,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    api.logout();
+  const handleLogout = async () => {
+    await api.logout();
     setIsLoggedIn(false);
     setCases([]);
     setActiveView('portal');
@@ -177,6 +181,10 @@ const App: React.FC = () => {
         ) : null;
       case 'settings':
         return <Settings />;
+      case 'users':
+        return <UserManagement />;
+      case 'reports':
+        return <Reports />;
       default:
         return <PublicPortal onAdminAccess={() => setActiveView('login')} />;
     }
@@ -209,6 +217,8 @@ const App: React.FC = () => {
             {[
               { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
               { id: 'create', label: 'New Identity Record', icon: PlusCircle },
+              { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
+              { id: 'users', label: 'User Management', icon: Users },
               { id: 'settings', label: 'System Logic', icon: SettingsIcon },
             ].map((item) => (
               <button

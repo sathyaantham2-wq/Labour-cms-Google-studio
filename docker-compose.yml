@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    container_name: labour-cms
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4000}
+    volumes:
+      - labour_data:/app/server/data
+
+  # Optional: run daily backup via cron
+  backup:
+    image: alpine:3.19
+    container_name: labour-cms-backup
+    depends_on:
+      - app
+    volumes:
+      - labour_data:/data:ro
+      - ./backups:/backups
+    entrypoint: >
+      sh -c "while true; do
+        cp /data/labour_cms.db /backups/labour_cms_$$(date +%Y%m%d_%H%M%S).db 2>/dev/null;
+        find /backups -name '*.db' -mtime +30 -delete 2>/dev/null;
+        sleep 86400;
+      done"
+
+volumes:
+  labour_data:

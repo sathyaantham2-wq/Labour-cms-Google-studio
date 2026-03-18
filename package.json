@@ -7,10 +7,12 @@
     "dev": "vite",
     "dev:server": "cd server && node index.js",
     "build": "vite build",
+    "build:prod": "npm run build && cd server && NODE_ENV=production node index.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "install:server": "cd server && npm install",
-    "setup": "npm install && npm run install:server"
+    "setup": "npm install && npm run install:server",
+    "start": "cd server && NODE_ENV=production node index.js"
   },
   "dependencies": {
     "react": "^19.2.4",

@@ -4,11 +4,48 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+const logAudit = (action, entityId, userId, username, diff) => {
+  try {
+    db.prepare(
+      'INSERT INTO audit_log (id, timestamp, action, entityType, entityId, userId, username, diff) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+      Date.now().toString() + Math.random().toString(36).slice(2),
+      new Date().toISOString(),
+      action,
+      'case',
+      entityId,
+      userId,
+      username,
+      JSON.stringify(diff || {})
+    );
+  } catch (e) {
+    console.error('Audit log error:', e);
+  }
+};
+
 const parseCase = (row) => ({
   ...row,
   applicantPhones: JSON.parse(row.applicantPhones || '[]'),
   hearings: JSON.parse(row.hearings || '[]'),
   amountRecovered: Number(row.amountRecovered || 0),
+});
+
+// GET export all cases as CSV
+router.get('/export', authenticate, (req, res) => {
+  const rows = db.prepare('SELECT * FROM cases ORDER BY createdAt DESC').all();
+  const headers = ['File Number','Received Date','Section','Applicant Name','Applicant Phone',
+    'Management Name','Management Person','Subject','Amount Recovered','Status','Created At'];
+  const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csvRows = rows.map((row) => {
+    const phones = JSON.parse(row.applicantPhones || '[]');
+    return [row.fileNumber, row.receivedDate, row.section, row.applicantName, phones.join('; '),
+      row.managementName, row.managementPerson || '', row.subject, row.amountRecovered,
+      row.status, row.createdAt].map(escape).join(',');
+  });
+  const csv = [headers.map(escape).join(','), ...csvRows].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="cases_export.csv"');
+  res.send(csv);
 });
 
 // Public: search by file number (no auth required)
@@ -74,6 +111,7 @@ router.post('/', authenticate, (req, res) => {
     createdAt: c.createdAt || new Date().toISOString(),
   });
 
+  logAudit('CREATE', c.id, req.user?.id, req.user?.username, { fileNumber: c.fileNumber });
   res.status(201).json(c);
 });
 
@@ -99,6 +137,7 @@ router.put('/:id', authenticate, (req, res) => {
   });
 
   if (result.changes === 0) return res.status(404).json({ error: 'Case not found' });
+  logAudit('UPDATE', c.id, req.user?.id, req.user?.username, { status: c.status });
   res.json(c);
 });
 

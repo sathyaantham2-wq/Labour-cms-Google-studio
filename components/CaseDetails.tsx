@@ -1,27 +1,30 @@
 
-import React, { useState } from 'react';
-import { LaborCase, CaseStatus, Hearing } from '../types';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  User, 
-  Building, 
-  Plus, 
-  Edit3, 
+import React, { useState, useEffect, useRef } from 'react';
+import { LaborCase, CaseStatus, Hearing, Attachment, AuditEntry } from '../types';
+import {
+  ArrowLeft,
+  Clock,
+  MapPin,
+  User,
+  Building,
+  Plus,
+  Edit3,
   FileText,
   History,
   ShieldCheck,
   AlertCircle,
-  MoreVertical,
   ChevronRight,
   X,
   Save,
   Archive,
   RotateCcw,
-  Send
+  Send,
+  Paperclip,
+  Upload,
+  Trash2,
+  Download,
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface CaseDetailsProps {
   caseItem: LaborCase;
@@ -37,6 +40,60 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
   const [newHearing, setNewHearing] = useState({ date: '', remarks: '' });
   const [isEditingAmount, setIsEditingAmount] = useState(false);
   const [recoveryAmount, setRecoveryAmount] = useState(caseItem.amountRecovered.toString());
+
+  // Attachments
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachLoading, setAttachLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // History
+  const [history, setHistory] = useState<AuditEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    setAttachLoading(true);
+    api.getAttachments(caseItem.id)
+      .then(setAttachments)
+      .catch(() => {})
+      .finally(() => setAttachLoading(false));
+  }, [caseItem.id]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const att = await api.uploadAttachment(caseItem.id, file);
+      setAttachments((prev) => [att, ...prev]);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAttachment = async (id: string) => {
+    if (!confirm('Delete this attachment?')) return;
+    try {
+      await api.deleteAttachment(id);
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Delete failed');
+    }
+  };
+
+  const loadHistory = async () => {
+    if (showHistory) { setShowHistory(false); return; }
+    setHistoryLoading(true);
+    setShowHistory(true);
+    try {
+      setHistory(await api.getCaseHistory(caseItem.id));
+    } catch { setHistory([]); }
+    finally { setHistoryLoading(false); }
+  };
 
   const handleRestore = () => {
     onUpdate({
@@ -144,6 +201,78 @@ const CaseDetails: React.FC<CaseDetailsProps> = ({ caseItem, onUpdate, onBack, o
               <Archive size={18} />
               Archive
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* Attachments & History row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Attachments */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Paperclip size={16} className="text-[#C9A84C]" /> Attachments ({attachments.length})
+            </h3>
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0A1628] text-[#C9A84C] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#C9A84C] hover:text-[#0A1628] transition-all disabled:opacity-50">
+              <Upload size={14} /> {uploading ? 'Uploading…' : 'Upload'}
+            </button>
+            <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls" />
+          </div>
+          <div className="p-4 space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
+            {attachLoading ? (
+              <p className="text-xs text-slate-400 font-bold text-center py-4 animate-pulse">Loading…</p>
+            ) : attachments.length === 0 ? (
+              <p className="text-xs text-slate-400 font-bold text-center py-6">No attachments yet</p>
+            ) : attachments.map((a) => (
+              <div key={a.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#C9A84C]/30 transition-all">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-[#0A1628] truncate">{a.originalName}</p>
+                  <p className="text-[9px] font-bold text-slate-400">{(a.size / 1024).toFixed(1)} KB • {a.uploadedBy} • {new Date(a.uploadedAt).toLocaleDateString()}</p>
+                </div>
+                <div className="flex gap-1 ml-2">
+                  <a href={api.getAttachmentUrl(a.id)} target="_blank" rel="noopener noreferrer"
+                    className="p-1.5 text-slate-400 hover:text-[#0A1628] hover:bg-white rounded-lg transition-all">
+                    <Download size={14} />
+                  </a>
+                  <button onClick={() => handleDeleteAttachment(a.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Case History */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <History size={16} className="text-[#C9A84C]" /> Case History
+            </h3>
+            <button onClick={loadHistory}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#0A1628] hover:text-[#C9A84C] transition-all">
+              {showHistory ? 'Hide' : 'View'} History
+            </button>
+          </div>
+          {showHistory && (
+            <div className="p-4 space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
+              {historyLoading ? (
+                <p className="text-xs text-slate-400 font-bold text-center py-4 animate-pulse">Loading…</p>
+              ) : history.length === 0 ? (
+                <p className="text-xs text-slate-400 font-bold text-center py-6">No history yet</p>
+              ) : history.map((h) => (
+                <div key={h.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className={`mt-0.5 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${h.action === 'CREATE' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{h.action}</span>
+                  <div>
+                    <p className="text-xs font-black text-[#0A1628]">{h.username}</p>
+                    <p className="text-[9px] text-slate-400 font-bold">{new Date(h.timestamp).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
