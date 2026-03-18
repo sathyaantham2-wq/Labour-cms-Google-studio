@@ -2,29 +2,37 @@
 import React, { useState } from 'react';
 import { LaborCase, CaseStatus } from '../types';
 import { Search, Shield, ChevronRight, Clock, FileText, CheckCircle2, History, AlertCircle } from 'lucide-react';
+import { api } from '../services/api.ts';
 
 interface PublicPortalProps {
-  cases: LaborCase[];
   onAdminAccess: () => void;
 }
 
-const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => {
+const PublicPortal: React.FC<PublicPortalProps> = ({ onAdminAccess }) => {
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<LaborCase | null>(null);
+  const [result, setResult] = useState<Partial<LaborCase> | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const found = cases.find(c => 
-      c.fileNumber.toLowerCase() === query.toLowerCase().trim()
-    );
-    setResult(found || null);
-    setHasSearched(true);
+    if (!query.trim()) return;
+    setIsSearching(true);
+    setHasSearched(false);
+    try {
+      const data = await api.getPublicCase(query.trim());
+      setResult(data);
+    } catch {
+      setResult(null);
+    } finally {
+      setHasSearched(true);
+      setIsSearching(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col">
-      {/* Header Bar */}
+      {/* Header */}
       <header className="relative z-50 p-8 flex justify-between items-center border-b border-slate-100 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-[#0A1628] border border-[#C9A84C]/50 rounded-xl flex items-center justify-center text-[#C9A84C]">
@@ -35,20 +43,16 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
             <p className="text-[10px] font-black text-[#C9A84C] uppercase tracking-[0.2em]">Rangareddy District • Telangana</p>
           </div>
         </div>
-        <button 
+        <button
           type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onAdminAccess();
-          }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdminAccess(); }}
           className="cursor-pointer px-5 py-2.5 bg-[#0A1628] text-[#C9A84C] border border-[#C9A84C]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-[#0A1628] hover:border-[#0A1628] transition-all flex items-center gap-2 group shadow-lg shadow-[#0A1628]/10"
         >
           Officer Access <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
         <div className="max-w-2xl w-full space-y-12">
           <div className="text-center space-y-4">
@@ -65,24 +69,24 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
             <div className="relative flex bg-white p-3 rounded-2xl border border-slate-200 shadow-2xl">
               <div className="flex-1 flex items-center px-4">
                 <Search size={22} className="text-slate-300 mr-4" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Enter File Number (e.g. TG/LC/2025/001)"
                   className="w-full bg-transparent outline-none text-lg font-bold text-[#0A1628] placeholder-slate-300"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <button 
+              <button
                 type="submit"
-                className="px-8 py-4 bg-[#0A1628] text-[#C9A84C] font-black text-sm uppercase tracking-widest rounded-xl hover:bg-[#C9A84C] hover:text-[#0A1628] transition-all shadow-xl shadow-[#0A1628]/20"
+                disabled={isSearching}
+                className="px-8 py-4 bg-[#0A1628] text-[#C9A84C] font-black text-sm uppercase tracking-widest rounded-xl hover:bg-[#C9A84C] hover:text-[#0A1628] transition-all shadow-xl shadow-[#0A1628]/20 disabled:opacity-60"
               >
-                Track Status
+                {isSearching ? 'Searching…' : 'Track Status'}
               </button>
             </div>
           </form>
 
-          {/* Search Result Projection */}
           {hasSearched && (
             <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
               {result ? (
@@ -119,7 +123,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
                     <div className="space-y-4">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Resolution Chronicle</p>
                       <div className="space-y-3">
-                        {result.hearings.slice().reverse().map((h) => (
+                        {(result.hearings || []).slice().reverse().map((h) => (
                           <div key={h.id} className="flex gap-3">
                             <div className="mt-1">
                               {h.isCompleted ? (
@@ -138,7 +142,7 @@ const PublicPortal: React.FC<PublicPortalProps> = ({ cases, onAdminAccess }) => 
                             </div>
                           </div>
                         ))}
-                        {result.hearings.length === 0 && (
+                        {(!result.hearings || result.hearings.length === 0) && (
                           <div className="flex items-center gap-3 text-slate-300">
                             <History size={16} />
                             <p className="text-xs font-bold uppercase tracking-widest">Awaiting First Event</p>

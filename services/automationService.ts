@@ -1,7 +1,17 @@
+import { api } from './api';
 
-export const triggerAutomationWebhook = async (event: string, data: any) => {
-  const n8nUrl = localStorage.getItem('n8n_webhook_url');
-  const makeUrl = localStorage.getItem('make_webhook_url');
+export const triggerAutomationWebhook = async (event: string, data: unknown): Promise<void> => {
+  let n8nUrl = '';
+  let makeUrl = '';
+
+  try {
+    const settings = await api.getSettings();
+    n8nUrl = settings['n8n_webhook_url'] || '';
+    makeUrl = settings['make_webhook_url'] || '';
+  } catch {
+    // Settings unavailable – skip webhook
+    return;
+  }
 
   const payload = {
     event,
@@ -9,29 +19,19 @@ export const triggerAutomationWebhook = async (event: string, data: any) => {
     data,
   };
 
-  // Trigger n8n if configured
   if (n8nUrl) {
-    try {
-      fetch(n8nUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(err => console.error('n8n Webhook failed:', err));
-    } catch (e) {
-      console.error('n8n fetch error:', e);
-    }
+    fetch(n8nUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch((err) => console.error('n8n webhook error:', err));
   }
 
-  // Trigger Make if configured
   if (makeUrl) {
-    try {
-      fetch(makeUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(err => console.error('Make Webhook failed:', err));
-    } catch (e) {
-      console.error('Make fetch error:', e);
-    }
+    fetch(makeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch((err) => console.error('Make.com webhook error:', err));
   }
 };
