@@ -14,7 +14,7 @@ dist-ssr
 
 # Backend
 server/node_modules
-server/data/*.db
+server/data/
 server/.env
 
 # Editor directories and files
